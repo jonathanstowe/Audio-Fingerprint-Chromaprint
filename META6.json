@@ -19,6 +19,7 @@
   ],
   "license": "perl",
   "test-depends": [
+      "Test::META",
 		"Audio::Sndfile"
   ],
   "description": "Get audio fingerprint using the chromaprint / AcoustID library",
