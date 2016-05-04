@@ -2,6 +2,8 @@
 use v6.c;
 use NativeCall;
 
+use NativeHelpers::Array;
+
 class Audio::Fingerprint::Chromaprint {
 
     constant LIB = [ 'chromaprint', v0 ];
@@ -213,9 +215,7 @@ constant __va_list_tag is export := __va_list_tag_c;
             my $p = Pointer[Str].new;
             my $rc = chromaprint_get_fingerprint(self, $p);
             my $ret = $p.deref.encode.decode;
-
-            self.dealloc($p);
-
+            self!dealloc($p);
             $ret;
         }
 
@@ -303,17 +303,13 @@ constant __va_list_tag is export := __va_list_tag_c;
 #CHROMAPRINT_API void chromaprint_dealloc(void *ptr);
 
         sub chromaprint_dealloc_p(Pointer $ptr ) is symbol('chromaprint_dealloc') is native(LIB) { * }
-        sub chromaprint_dealloc_s(Str $ptr ) is symbol('chromaprint_dealloc') is native(LIB) { * }
 
-        multi method dealloc(Pointer $ptr) {
+        method !dealloc(Pointer $ptr) {
             chromaprint_dealloc_p($ptr);
-        }
-        multi method dealloc(Str $ptr) {
-            chromaprint_dealloc_s($ptr);
         }
     }
 
-    has Context $!context handles <start feed finish fingerprint>;
+    has Context $!context handles <fingerprint>;
 
     has Bool $!started = False;
 
@@ -321,5 +317,45 @@ constant __va_list_tag is export := __va_list_tag_c;
         $!context = Context.new;
     }
 
+    has Int $!samplerate;
+    has Int $!channels;
+
+    method start($!samplerate, $!channels) returns Bool {
+        $!started = $!context.start($!samplerate, $!channels);
+    }
+
+    class X::NotStarted is Exception {
+        has Str $.message = "start() must be called before feed";
+    }
+
+    proto method feed(|c) { * }
+
+    multi method feed(CArray $data, Int $frames) returns Bool {
+        if not $!started {
+            X::NotStarted.new.throw;
+        }
+        $!context.feed($data, $frames);
+    }
+
+    multi method feed(@frames) returns Bool {
+        if not $!started {
+            X::NotStarted.new.throw;
+        }
+        my $carray = copy-to-carray(@frames, int16);
+        my $frames = (@frames.elems / $!channels).Int;
+        $!context.feed($carray, $frames);
+    }
+
+    method finish() returns Bool {
+        if not $!started {
+            X::NotStarted.new.throw;
+        }
+        my $rc = $!context.finish;
+        if $rc {
+            $!started = False;
+        }
+        $rc;
+    }
 }
+
 # vim: expandtab shiftwidth=4 ft=perl6

@@ -22,11 +22,13 @@ if library-exists('chromaprint', v0) {
     my $wav-obj;
     lives-ok { $wav-obj =  Audio::Sndfile.new(filename => $wav-path, :r) }, "open a wav file for reading";
 
-    lives-ok { $obj.start($wav-obj.samplerate, $wav-obj.channels) }, "start";
 
     my $r-frames = $wav-obj.frames;
     my ( $data, $frames ) = $wav-obj.read-short($r-frames, :raw);
-    lives-ok { $obj.feed($data, $frames) }, "feed $r-frames frames";
+
+    throws-like { $obj.feed($data, $frames) }, X::NotStarted, "feed throws before start";
+    lives-ok { $obj.start($wav-obj.samplerate, $wav-obj.channels) }, "start";
+    lives-ok { $obj.feed($data, $frames) }, "feed $r-frames raw frames";
 
     my $rc;
     lives-ok { $rc = $obj.finish }, "finish";
@@ -34,7 +36,22 @@ if library-exists('chromaprint', v0) {
     ok $rc, "finish was okay";
     lives-ok { $fp = $obj.fingerprint }, "get fingerprint";
     diag $fp;
+    $wav-obj.close;
 
+    lives-ok { $wav-obj =  Audio::Sndfile.new(filename => $wav-path, :r) }, "open a wav file to re-read";
+
+    $r-frames = $wav-obj.frames;
+    my @frames = $wav-obj.read-short($r-frames);
+
+    throws-like { $obj.feed(@frames) }, X::NotStarted, "feed throws before start (also tests that finish does the right thing)";
+    lives-ok { $obj.start($wav-obj.samplerate, $wav-obj.channels) }, "start";
+    lives-ok { $obj.feed(@frames) }, "feed $r-frames frames as an array";
+
+    lives-ok { $rc = $obj.finish }, "finish";
+    my $fp-new;
+    ok $rc, "finish was okay";
+    lives-ok { $fp-new = $obj.fingerprint }, "get fingerprint";
+    is $fp-new, $fp, "and the two fingerprints are the same";
 }
 else {
     skip "no libchromaprint can't test";
