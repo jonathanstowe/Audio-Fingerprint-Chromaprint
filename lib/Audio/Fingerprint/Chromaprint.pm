@@ -166,7 +166,7 @@ constant __va_list_tag is export := __va_list_tag_c;
 
         sub chromaprint_feed(Context $ctx, CArray[int16] $data, int32 $size ) is native(LIB) returns int32 { * }
 
-        method feed(Context:D: CArray[int16] $data, Int $frames) returns Bool {
+        method feed(Context:D: CArray $data, Int $frames) returns Bool {
             my $rc = chromaprint_feed(self, $data, $frames);
             Bool($rc);
         }
@@ -207,12 +207,16 @@ constant __va_list_tag is export := __va_list_tag_c;
 # */
 #CHROMAPRINT_API int chromaprint_get_fingerprint(ChromaprintContext *ctx, char **fingerprint);
 
-        sub chromaprint_get_fingerprint(Context $ctx, Pointer[Str]  $fingerprint ) is native(LIB) returns int32  { * }
+        sub chromaprint_get_fingerprint(Context $ctx, Pointer[Str]  $fingerprint is rw ) is native(LIB) returns int32  { * }
 
         method fingerprint(Context:D:) returns Str {
-            my $p = Pointer[Str];
+            my $p = Pointer[Str].new;
             my $rc = chromaprint_get_fingerprint(self, $p);
-            $p.deref;
+            my $ret = $p.deref.encode.decode;
+
+            self.dealloc($p);
+
+            $ret;
         }
 
 #-From /usr/include/chromaprint.h:188
@@ -298,11 +302,23 @@ constant __va_list_tag is export := __va_list_tag_c;
 # */
 #CHROMAPRINT_API void chromaprint_dealloc(void *ptr);
 
-        sub chromaprint_dealloc(Pointer $ptr ) is native(LIB) { * }
+        sub chromaprint_dealloc_p(Pointer $ptr ) is symbol('chromaprint_dealloc') is native(LIB) { * }
+        sub chromaprint_dealloc_s(Str $ptr ) is symbol('chromaprint_dealloc') is native(LIB) { * }
 
-        method dealloc(Pointer $ptr) {
-            chromaprint_dealloc($ptr);
+        multi method dealloc(Pointer $ptr) {
+            chromaprint_dealloc_p($ptr);
         }
+        multi method dealloc(Str $ptr) {
+            chromaprint_dealloc_s($ptr);
+        }
+    }
+
+    has Context $!context handles <start feed finish fingerprint>;
+
+    has Bool $!started = False;
+
+    submethod BUILD() {
+        $!context = Context.new;
     }
 
 }
