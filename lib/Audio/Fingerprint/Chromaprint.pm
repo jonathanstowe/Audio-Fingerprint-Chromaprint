@@ -2,18 +2,16 @@
 use v6.c;
 use NativeCall;
 
-constant LIB = [ 'chromaprint', v0 ];
+class Audio::Fingerprint::Chromaprint {
+
+    constant LIB = [ 'chromaprint', v0 ];
 
 ## Enumerations
 
 # == /usr/include/chromaprint.h ==
 
-enum ChromaprintAlgorithm is export (
-   CHROMAPRINT_ALGORITHM_TEST1 => 0,
-   CHROMAPRINT_ALGORITHM_TEST2 => 1,
-   CHROMAPRINT_ALGORITHM_TEST3 => 2,
-   CHROMAPRINT_ALGORITHM_TEST4 => 3
-);
+    enum Algorithm ( Test1 => 0, Test2 => 1, Test3 => 2, Test4 => 3);
+
 ## Structures
 
 
@@ -38,8 +36,12 @@ constant __va_list_tag is export := __va_list_tag_c;
 # * Return the version number of Chromaprint.
 # */
 #CHROMAPRINT_API const char *chromaprint_get_version(void);
-sub chromaprint_get_version(
-                            ) is native(LIB) returns Str is export { * }
+
+    sub chromaprint_get_version() returns Str is native(LIB) { * }
+
+    method version() returns Str {
+        chromaprint_get_version();
+    }
 
 #-From /usr/include/chromaprint.h:81
 #/**
@@ -58,8 +60,14 @@ sub chromaprint_get_version(
 # *  - Chromaprint context pointer
 # */
 #CHROMAPRINT_API ChromaprintContext *chromaprint_new(int algorithm);
-sub chromaprint_new(int32 $algorithm # int
-                    ) is native(LIB) returns Pointer[Pointer] is export { * }
+
+    class Context is repr('CPointer') {
+
+        sub chromaprint_new(int32 $algorithm) returns Context is native(LIB)  { * }
+
+        method new(Context:U: Algorithm :$algorithm = Test2) returns Context {
+            chromaprint_new($algorithm.Int);
+        }
 
 #-From /usr/include/chromaprint.h:93
 #/**
@@ -73,16 +81,25 @@ sub chromaprint_new(int32 $algorithm # int
 # *  - ctx: Chromaprint context pointer
 # */
 #CHROMAPRINT_API void chromaprint_free(ChromaprintContext *ctx);
-sub chromaprint_free(Pointer[Pointer] $ctx # Typedef<ChromaprintContext>->|void*|*
-                     ) is native(LIB)  is export { * }
+
+        sub chromaprint_free(Context $ctx) is native(LIB) { * }
+
+        method free(Context:D:) {
+            chromaprint_free(self);
+        }
 
 #-From /usr/include/chromaprint.h:98
 #/**
 # * Return the fingerprint algorithm this context is configured to use.
 # */
 #CHROMAPRINT_API int chromaprint_get_algorithm(ChromaprintContext *ctx);
-sub chromaprint_get_algorithm(Pointer[Pointer] $ctx # Typedef<ChromaprintContext>->|void*|*
-                              ) is native(LIB) returns int32 is export { * }
+
+        sub chromaprint_get_algorithm(Context $ctx ) is native(LIB) returns int32 { * }
+
+        method algorithm(Context:D:) returns Algorithm {
+            my $alg = chromaprint_get_algorithm(self);
+            Algorithm($alg);
+        }
 
 #-From /usr/include/chromaprint.h:117
 #/**
@@ -103,10 +120,13 @@ sub chromaprint_get_algorithm(Pointer[Pointer] $ctx # Typedef<ChromaprintContext
 # *  - 0 on error, 1 on success
 # */
 #CHROMAPRINT_API int chromaprint_set_option(ChromaprintContext *ctx, const char *name, int value);
-sub chromaprint_set_option(Pointer[Pointer]              $ctx # Typedef<ChromaprintContext>->|void*|*
-                          ,Str                           $name # const char*
-                          ,int32                         $value # int
-                           ) is native(LIB) returns int32 is export { * }
+
+        sub chromaprint_set_option(Context  $ctx, Str $name, int32 $value ) is native(LIB) returns int32 { * }
+
+        method silence-threshold(Context:D: Int $threshold) returns Bool {
+            my $rc = chromaprint_set_option(self, 'silence_threshold', $threshold);
+            Bool($rc);
+        }
 
 #-From /usr/include/chromaprint.h:130
 #/**
@@ -121,10 +141,13 @@ sub chromaprint_set_option(Pointer[Pointer]              $ctx # Typedef<Chromapr
 # *  - 0 on error, 1 on success
 # */
 #CHROMAPRINT_API int chromaprint_start(ChromaprintContext *ctx, int sample_rate, int num_channels);
-sub chromaprint_start(Pointer[Pointer]              $ctx # Typedef<ChromaprintContext>->|void*|*
-                     ,int32                         $sample_rate # int
-                     ,int32                         $num_channels # int
-                      ) is native(LIB) returns int32 is export { * }
+
+        sub chromaprint_start(Context $ctx, int32  $sample_rate, int32 $num_channels ) is native(LIB) returns int32 { * }
+
+        method start(Context:D: Int $sample-rate, Int $channels) returns Bool {
+            my $rc = chromaprint_start(self, $sample-rate, $channels);
+            Bool($rc);
+        }
 
 #-From /usr/include/chromaprint.h:144
 #/**
@@ -140,10 +163,13 @@ sub chromaprint_start(Pointer[Pointer]              $ctx # Typedef<ChromaprintCo
 # *  - 0 on error, 1 on success
 # */
 #CHROMAPRINT_API int chromaprint_feed(ChromaprintContext *ctx, void *data, int size);
-sub chromaprint_feed(Pointer[Pointer]              $ctx # Typedef<ChromaprintContext>->|void*|*
-                    ,Pointer                       $data # void*
-                    ,int32                         $size # int
-                     ) is native(LIB) returns int32 is export { * }
+
+        sub chromaprint_feed(Context $ctx, CArray[int16] $data, int32 $size ) is native(LIB) returns int32 { * }
+
+        method feed(Context:D: CArray[int16] $data, Int $frames) returns Bool {
+            my $rc = chromaprint_feed(self, $data, $frames);
+            Bool($rc);
+        }
 
 #-From /usr/include/chromaprint.h:155
 #/**
@@ -156,8 +182,13 @@ sub chromaprint_feed(Pointer[Pointer]              $ctx # Typedef<ChromaprintCon
 # *  - 0 on error, 1 on success
 # */
 #CHROMAPRINT_API int chromaprint_finish(ChromaprintContext *ctx);
-sub chromaprint_finish(Pointer[Pointer] $ctx # Typedef<ChromaprintContext>->|void*|*
-                       ) is native(LIB) returns int32 is export { * }
+
+        sub chromaprint_finish(Context $ctx ) is native(LIB) returns int32 { * }
+
+        method finish(Context:D:) returns Bool {
+            my $rc = chromaprint_finish(self);
+            Bool($rc);
+        }
 
 #-From /usr/include/chromaprint.h:171
 #/**
@@ -175,9 +206,14 @@ sub chromaprint_finish(Pointer[Pointer] $ctx # Typedef<ChromaprintContext>->|voi
 # *  - 0 on error, 1 on success
 # */
 #CHROMAPRINT_API int chromaprint_get_fingerprint(ChromaprintContext *ctx, char **fingerprint);
-sub chromaprint_get_fingerprint(Pointer[Pointer]              $ctx # Typedef<ChromaprintContext>->|void*|*
-                               ,Pointer[Str]                  $fingerprint # char**
-                                ) is native(LIB) returns int32 is export { * }
+
+        sub chromaprint_get_fingerprint(Context $ctx, Pointer[Str]  $fingerprint ) is native(LIB) returns int32  { * }
+
+        method fingerprint(Context:D:) returns Str {
+            my $p = Pointer[Str];
+            my $rc = chromaprint_get_fingerprint(self, $p);
+            $p.deref;
+        }
 
 #-From /usr/include/chromaprint.h:188
 #/**
@@ -196,10 +232,8 @@ sub chromaprint_get_fingerprint(Pointer[Pointer]              $ctx # Typedef<Chr
 # *  - 0 on error, 1 on success
 # */
 #CHROMAPRINT_API int chromaprint_get_raw_fingerprint(ChromaprintContext *ctx, void **fingerprint, int *size);
-sub chromaprint_get_raw_fingerprint(Pointer[Pointer]              $ctx # Typedef<ChromaprintContext>->|void*|*
-                                   ,Pointer[Pointer]              $fingerprint # void**
-                                   ,Pointer[int32]                $size # int*
-                                    ) is native(LIB) returns int32 is export { * }
+
+        sub chromaprint_get_raw_fingerprint(Context $ctx, Pointer[Pointer] $fingerprint, Pointer[int32] $size ) is native(LIB) returns int32 { * }
 
 #-From /usr/include/chromaprint.h:213
 #/**
@@ -226,13 +260,8 @@ sub chromaprint_get_raw_fingerprint(Pointer[Pointer]              $ctx # Typedef
 # *  - 0 on error, 1 on success
 # */
 #CHROMAPRINT_API int chromaprint_encode_fingerprint(const void *fp, int size, int algorithm, void **encoded_fp, int *encoded_size, int base64);
-sub chromaprint_encode_fingerprint(Pointer                       $fp # const void*
-                                  ,int32                         $size # int
-                                  ,int32                         $algorithm # int
-                                  ,Pointer[Pointer]              $encoded_fp # void**
-                                  ,Pointer[int32]                $encoded_size # int*
-                                  ,int32                         $base64 # int
-                                   ) is native(LIB) returns int32 is export { * }
+
+        sub chromaprint_encode_fingerprint(Pointer $fp, int32 $size, int32 $algorithm, Pointer[Pointer] $encoded_fp, Pointer[int32] $encoded_size, int32 $base64 ) is native(LIB) returns int32 { * }
 
 #-From /usr/include/chromaprint.h:236
 #/**
@@ -257,13 +286,8 @@ sub chromaprint_encode_fingerprint(Pointer                       $fp # const voi
 # *  - 0 on error, 1 on success
 # */
 #CHROMAPRINT_API int chromaprint_decode_fingerprint(const void *encoded_fp, int encoded_size, void **fp, int *size, int *algorithm, int base64);
-sub chromaprint_decode_fingerprint(Pointer                       $encoded_fp # const void*
-                                  ,int32                         $encoded_size # int
-                                  ,Pointer[Pointer]              $fp # void**
-                                  ,Pointer[int32]                $size # int*
-                                  ,Pointer[int32]                $algorithm # int*
-                                  ,int32                         $base64 # int
-                                   ) is native(LIB) returns int32 is export { * }
+
+        sub chromaprint_decode_fingerprint(Pointer  $encoded_fp, int32 $encoded_size, Pointer[Pointer] $fp, Pointer[int32] $size, Pointer[int32] $algorithm, int32 $base64 ) is native(LIB) returns int32 { * }
 
 #-From /usr/include/chromaprint.h:244
 #/**
@@ -273,8 +297,13 @@ sub chromaprint_decode_fingerprint(Pointer                       $encoded_fp # c
 # *  - ptr: Pointer to be deallocated
 # */
 #CHROMAPRINT_API void chromaprint_dealloc(void *ptr);
-sub chromaprint_dealloc(Pointer $ptr # void*
-                        ) is native(LIB)  is export { * }
 
-## Externs
+        sub chromaprint_dealloc(Pointer $ptr ) is native(LIB) { * }
 
+        method dealloc(Pointer $ptr) {
+            chromaprint_dealloc($ptr);
+        }
+    }
+
+}
+# vim: expandtab shiftwidth=4 ft=perl6
