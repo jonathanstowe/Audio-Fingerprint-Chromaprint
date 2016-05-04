@@ -1,67 +1,168 @@
 
 use v6.c;
 use NativeCall;
-
 use NativeHelpers::Array;
+
+=begin pod
+
+=head1 NAME
+
+Audio::Fingerprint::Chromaprint  - Get audio fingerprint using the chromaprint / AcoustID library
+
+=head1 SYNOPSIS
+
+=begin code
+
+use Audio::Fingerprint::Chromaprint;
+use Audio::Sndfile;
+
+my $fp = Audio::Fingerprint::Chromaprint.new;
+
+my $wav = Audio::Sndfile.new(filename => 'some.wav', :r);
+
+$fp.start($wav.samplerate, $wav.channels);
+
+# Read the whole file at once
+my ( $data, $frames ) = $wav.read-short($wav.frames, :raw);
+
+# You can feed multiple times
+$fp.feed($data, $frames);
+
+# call finish to indicate done feeding
+$fp.finish;
+
+say $fp.fingerprint;
+
+=end code
+
+=head1 DESCRIPTION
+
+This provides a mechanism for obtaining a fingerprint of some audio data
+using the L<Chromaprint library|https://acoustid.org/chromaprint>, you
+can use this to identify recorded audio or determine whether two audio
+files are the same for instance.
+
+You need several seconds worth of data in order to be able to get a
+usable fingerprint, and for comparison of two files you will need to
+ensure that you have the same number of samples, ideally you should
+fingerprint the entire audio file, but this may be slow if you have
+a large file.
+
+The library only can handle integer PCM audio data, if you need to
+deal with encoded data such as MP3 or Ogg/Vorbis you will need to
+use another library to decode it to raw samples.
+
+Depending on how the Chromaprint library was built, it may or may not
+be safe to have multiple instances created at the same time, so it
+is probably safest to take care you only have a single instance in
+your application.
+
+=head1 METHODS
+
+=head2 method new
+
+    method new(Int :$silence-threshold, Algorithm :$algorithm = Test2) returns Audio::Fingerprint::Chromaprint
+
+This is the contructor for the class. If the chromaprint library 
+was built with the faster C<fftw> library rather than ffmpeq
+then the initialisation of the library is not thread-safe, so
+it may be best to avoid having more than one instance at a time
+in your application.
+
+If the named parameter C<silence-threshold> is supplied then it should be
+in the range of 0 - 32768 and will be used to modify the way in which the
+analysis is done. It's probably best not to use this if the fingerprints
+are to be shared with other systems, and if it is used it should be the
+same for every calculation if the fingerprint is to be compared.
+
+C<algorithm> is a value of the C<enum>
+C<Audio::Fingerprint::Chromaprint::Algorithm>, the default is C<Test2>
+(the values are C<Test1> to C<Test4>,) they aren't very well documented
+so I would suggest sticking to the default. Obviously for
+comparison purposes the algorithm used to generate the fingerprints
+should be the same.
+
+=head2 method version
+
+    method version() returns Str
+
+This returns a Str representing the version of the library being used.
+
+=head2 method start
+
+    method start(Int $samplerate, Int $channels) returns Bool
+
+This prepares the chromaprint library to begin receiving the
+samples for an audio file. This must be called before C<feed>.
+The C<$samplerate> and C<$channels> should be an accurate
+reflection of the data that is going to be fed.
+
+=head2 method feed
+
+    multi method feed(CArray $data, Int $frames) returns Bool
+    multi method feed(@frames) returns Bool 
+
+This adds the audio data that is to be analysed, the data
+should be interleaved 16 bit signed integers. You will need
+several seconds worth of data (which can be fed in pieces,)
+to be able to get a usable fingerprint, so, depending on 
+the samplerate of the audio data, you may need to feed at
+minimum somewhere in the region of 100,000 frames.
+
+The CArray candidate is more efficient as no conversion
+needs to be done to the data before passing to the
+underlying library function - C<$frames> should be the
+number of items in C<$data> divided by the number of
+channels, if you are getting the data with Audio::Sndfile
+for example then these values will be those returned
+by C<read-short> with the C<:raw> adverb.
+
+If you provide C<@frames> as an array, it should contain
+a number of indivual samples that is divisible by the
+number of channels in the data, this value will be used
+to calculate C<$frames>.
+
+If C<start> hasn't been called (or if C<finish> has
+already been called without a subsequent C<start> then
+an exception will be thrown.
+
+=head2 method finish
+
+    method finish() returns Bool
+
+This indicates to the library that the user has done feeding
+data and that the remaining buffered data can be used to
+calculate the fingerprint, if there is insufficient data
+to calculate the fingerprint then the C<libchromaprint> may
+rudely print a warning to C<STDERR>.
+
+After C<finish> has been called then C<start> must be called
+to allow the feeding of further data as the state of the
+engine will be reset.
+
+=head2 method fingerprint
+
+    method fingerprint() returns Str
+
+This returns the calculated fingerprint as a string, if there
+was unsufficient data provided then the fingerprint may only
+comprise 4 or 5 characters, rather than 23 or so that it 
+should be.
+
+=end pod
 
 class Audio::Fingerprint::Chromaprint {
 
     constant LIB = [ 'chromaprint', v0 ];
 
-## Enumerations
-
-# == /usr/include/chromaprint.h ==
-
     enum Algorithm ( Test1 => 0, Test2 => 1, Test3 => 2, Test4 => 3);
 
-## Structures
-
-
-# == <builtin> ==
-
-class __va_list_tag_c is repr('CStruct') is export {
-	has uint32                        $.gp_offset; # unsigned int gp_offset
-	has uint32                        $.fp_offset; # unsigned int fp_offset
-	has Pointer                       $.overflow_arg_area; # void* overflow_arg_area
-	has Pointer                       $.reg_save_area; # void* reg_save_area
-}
-## Extras stuff
-
-constant __va_list_tag is export := __va_list_tag_c;
-## Functions
-
-
-# == /usr/include/chromaprint.h ==
-
-#-From /usr/include/chromaprint.h:64
-#/**
-# * Return the version number of Chromaprint.
-# */
-#CHROMAPRINT_API const char *chromaprint_get_version(void);
 
     sub chromaprint_get_version() returns Str is native(LIB) { * }
 
     method version() returns Str {
         chromaprint_get_version();
     }
-
-#-From /usr/include/chromaprint.h:81
-#/**
-# * Allocate and initialize the Chromaprint context.
-# *
-# * Note that when Chromaprint is compiled with FFTW, this function is
-# * not reentrant and you need to call it only from one thread at a time.
-# * This is not a problem when using FFmpeg or vDSP.
-# *
-# * Parameters:
-# *  - version: Version of the fingerprint algorithm, use
-# *             CHROMAPRINT_ALGORITHM_DEFAULT for the default
-# *             algorithm
-# *
-# * Returns:
-# *  - Chromaprint context pointer
-# */
-#CHROMAPRINT_API ChromaprintContext *chromaprint_new(int algorithm);
 
     class Context is repr('CPointer') {
 
@@ -71,57 +172,12 @@ constant __va_list_tag is export := __va_list_tag_c;
             chromaprint_new($algorithm.Int);
         }
 
-#-From /usr/include/chromaprint.h:93
-#/**
-# * Deallocate the Chromaprint context.
-# *
-# * Note that when Chromaprint is compiled with FFTW, this function is
-# * not reentrant and you need to call it only from one thread at a time.
-# * This is not a problem when using FFmpeg or vDSP.
-# *
-# * Parameters:
-# *  - ctx: Chromaprint context pointer
-# */
-#CHROMAPRINT_API void chromaprint_free(ChromaprintContext *ctx);
-
         sub chromaprint_free(Context $ctx) is native(LIB) { * }
 
         method free(Context:D:) {
             chromaprint_free(self);
         }
 
-#-From /usr/include/chromaprint.h:98
-#/**
-# * Return the fingerprint algorithm this context is configured to use.
-# */
-#CHROMAPRINT_API int chromaprint_get_algorithm(ChromaprintContext *ctx);
-
-        sub chromaprint_get_algorithm(Context $ctx ) is native(LIB) returns int32 { * }
-
-        method algorithm(Context:D:) returns Algorithm {
-            my $alg = chromaprint_get_algorithm(self);
-            Algorithm($alg);
-        }
-
-#-From /usr/include/chromaprint.h:117
-#/**
-# * Set a configuration option for the selected fingerprint algorithm.
-# *
-# * NOTE: DO NOT USE THIS FUNCTION IF YOU ARE PLANNING TO USE
-# * THE GENERATED FINGERPRINTS WITH THE ACOUSTID SERVICE.
-# *
-# * Parameters:
-# *  - ctx: Chromaprint context pointer
-# *  - name: option name
-# *  - value: option value
-# *
-# * Possible options:
-# *  - silence_threshold: threshold for detecting silence, 0-32767
-# *
-# * Returns:
-# *  - 0 on error, 1 on success
-# */
-#CHROMAPRINT_API int chromaprint_set_option(ChromaprintContext *ctx, const char *name, int value);
 
         sub chromaprint_set_option(Context  $ctx, Str $name, int32 $value ) is native(LIB) returns int32 { * }
 
@@ -130,41 +186,12 @@ constant __va_list_tag is export := __va_list_tag_c;
             Bool($rc);
         }
 
-#-From /usr/include/chromaprint.h:130
-#/**
-# * Restart the computation of a fingerprint with a new audio stream.
-# *
-# * Parameters:
-# *  - ctx: Chromaprint context pointer
-# *  - sample_rate: sample rate of the audio stream (in Hz)
-# *  - num_channels: numbers of channels in the audio stream (1 or 2)
-# *
-# * Returns:
-# *  - 0 on error, 1 on success
-# */
-#CHROMAPRINT_API int chromaprint_start(ChromaprintContext *ctx, int sample_rate, int num_channels);
-
         sub chromaprint_start(Context $ctx, int32  $sample_rate, int32 $num_channels ) is native(LIB) returns int32 { * }
 
         method start(Context:D: Int $sample-rate, Int $channels) returns Bool {
             my $rc = chromaprint_start(self, $sample-rate, $channels);
             Bool($rc);
         }
-
-#-From /usr/include/chromaprint.h:144
-#/**
-# * Send audio data to the fingerprint calculator.
-# *
-# * Parameters:
-# *  - ctx: Chromaprint context pointer
-# *  - data: raw audio data, should point to an array of 16-bit signed
-# *          integers in native byte-order
-# *  - size: size of the data buffer (in samples)
-# *
-# * Returns:
-# *  - 0 on error, 1 on success
-# */
-#CHROMAPRINT_API int chromaprint_feed(ChromaprintContext *ctx, void *data, int size);
 
         sub chromaprint_feed(Context $ctx, CArray[int16] $data, int32 $size ) is native(LIB) returns int32 { * }
 
@@ -173,41 +200,12 @@ constant __va_list_tag is export := __va_list_tag_c;
             Bool($rc);
         }
 
-#-From /usr/include/chromaprint.h:155
-#/**
-# * Process any remaining buffered audio data and calculate the fingerprint.
-# *
-# * Parameters:
-# *  - ctx: Chromaprint context pointer
-# *
-# * Returns:
-# *  - 0 on error, 1 on success
-# */
-#CHROMAPRINT_API int chromaprint_finish(ChromaprintContext *ctx);
-
         sub chromaprint_finish(Context $ctx ) is native(LIB) returns int32 { * }
 
         method finish(Context:D:) returns Bool {
             my $rc = chromaprint_finish(self);
             Bool($rc);
         }
-
-#-From /usr/include/chromaprint.h:171
-#/**
-# * Return the calculated fingerprint as a compressed string.
-# *
-# * The caller is responsible for freeing the returned pointer using
-# * chromaprint_dealloc().
-# *
-# * Parameters:
-# *  - ctx: Chromaprint context pointer
-# *  - fingerprint: pointer to a pointer, where a pointer to the allocated array
-# *                 will be stored
-# *
-# * Returns:
-# *  - 0 on error, 1 on success
-# */
-#CHROMAPRINT_API int chromaprint_get_fingerprint(ChromaprintContext *ctx, char **fingerprint);
 
         sub chromaprint_get_fingerprint(Context $ctx, Pointer[Str]  $fingerprint is rw ) is native(LIB) returns int32  { * }
 
@@ -309,12 +307,16 @@ constant __va_list_tag is export := __va_list_tag_c;
         }
     }
 
-    has Context $!context handles <fingerprint>;
+    has Context $!context handles <fingerprint free>;
 
     has Bool $!started = False;
 
-    submethod BUILD() {
-        $!context = Context.new;
+    submethod BUILD(Int :$silence-threshold, Algorithm :$algorithm = Test2) {
+        $!context = Context.new(:$algorithm);
+
+        if $silence-threshold.defined {
+            $!context.silence-threshold($silence-threshold);
+        }
     }
 
     has Int $!samplerate;
