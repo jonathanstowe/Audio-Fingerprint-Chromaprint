@@ -73,7 +73,7 @@ This is a fairly simple library, but if you find a problem with it
 or have a suggestion how it can be improved then please raise a
 ticket at https://github.com/jonathanstowe/Audio-Fingerprint-Chromaprint/issues.
 
-## Copyright & License
+## Copyright & Licence
 
 This is free software.
 
