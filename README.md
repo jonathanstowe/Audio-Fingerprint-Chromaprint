@@ -77,7 +77,7 @@ ticket at https://github.com/jonathanstowe/Audio-Fingerprint-Chromaprint/issues.
 
 This is free software.
 
-See the [LICENSE](LICENSE) file in the distribution.
+See the [LICENCE](LICENCE) file in the distribution.
 
 © Jonathan Stowe 2016
 
