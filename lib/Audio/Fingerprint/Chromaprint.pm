@@ -158,17 +158,17 @@ class Audio::Fingerprint::Chromaprint {
     enum Algorithm ( Test1 => 0, Test2 => 1, Test3 => 2, Test4 => 3);
 
 
-    sub chromaprint_get_version() returns Str is native(LIB) { * }
+    sub chromaprint_get_version( --> Str ) is native(LIB) { * }
 
-    method version() returns Str {
+    method version( --> Str ) {
         chromaprint_get_version();
     }
 
     class Context is repr('CPointer') {
 
-        sub chromaprint_new(int32 $algorithm) returns Context is native(LIB)  { * }
+        sub chromaprint_new(int32 $algorithm --> Context ) is native(LIB)  { * }
 
-        method new(Context:U: Algorithm :$algorithm = Test2) returns Context {
+        method new(Context:U: Algorithm :$algorithm = Test2 --> Context ) {
             chromaprint_new($algorithm.Int);
         }
 
@@ -179,37 +179,37 @@ class Audio::Fingerprint::Chromaprint {
         }
 
 
-        sub chromaprint_set_option(Context  $ctx, Str $name, int32 $value ) is native(LIB) returns int32 { * }
+        sub chromaprint_set_option(Context  $ctx, Str $name, int32 $value --> int32 ) is native(LIB) { * }
 
-        method silence-threshold(Context:D: Int $threshold) returns Bool {
+        method silence-threshold(Context:D: Int $threshold --> Bool ) {
             my $rc = chromaprint_set_option(self, 'silence_threshold', $threshold);
             Bool($rc);
         }
 
-        sub chromaprint_start(Context $ctx, int32  $sample_rate, int32 $num_channels ) is native(LIB) returns int32 { * }
+        sub chromaprint_start(Context $ctx, int32  $sample_rate, int32 $num_channels --> int32 ) is native(LIB) { * }
 
-        method start(Context:D: Int $sample-rate, Int $channels) returns Bool {
+        method start(Context:D: Int $sample-rate, Int $channels --> Bool ) {
             my $rc = chromaprint_start(self, $sample-rate, $channels);
             Bool($rc);
         }
 
-        sub chromaprint_feed(Context $ctx, CArray[int16] $data, int32 $size ) is native(LIB) returns int32 { * }
+        sub chromaprint_feed(Context $ctx, CArray[int16] $data, int32 $size --> int32 ) is native(LIB) { * }
 
-        method feed(Context:D: CArray $data, Int $frames) returns Bool {
+        method feed(Context:D: CArray $data, Int $frames --> Bool ) {
             my $rc = chromaprint_feed(self, $data, $frames);
             Bool($rc);
         }
 
-        sub chromaprint_finish(Context $ctx ) is native(LIB) returns int32 { * }
+        sub chromaprint_finish(Context $ctx --> int32 ) is native(LIB) { * }
 
-        method finish(Context:D:) returns Bool {
+        method finish(Context:D: --> Bool ) {
             my $rc = chromaprint_finish(self);
             Bool($rc);
         }
 
-        sub chromaprint_get_fingerprint(Context $ctx, Pointer[Str]  $fingerprint is rw ) is native(LIB) returns int32  { * }
+        sub chromaprint_get_fingerprint(Context $ctx, Pointer[Str]  $fingerprint is rw --> int32 ) is native(LIB) { * }
 
-        method fingerprint(Context:D:) returns Str {
+        method fingerprint(Context:D: --> Str ) {
             my $p = Pointer[Str].new;
             my $rc = chromaprint_get_fingerprint(self, $p);
             my $ret = $p.deref.encode.decode;
@@ -322,7 +322,7 @@ class Audio::Fingerprint::Chromaprint {
     has Int $!samplerate;
     has Int $!channels;
 
-    method start($!samplerate, $!channels) returns Bool {
+    method start($!samplerate, $!channels --> Bool ) {
         $!started = $!context.start($!samplerate, $!channels);
     }
 
@@ -332,14 +332,14 @@ class Audio::Fingerprint::Chromaprint {
 
     proto method feed(|c) { * }
 
-    multi method feed(CArray $data, Int $frames) returns Bool {
+    multi method feed(CArray $data, Int $frames --> Bool ) {
         if not $!started {
             X::NotStarted.new.throw;
         }
         $!context.feed($data, $frames);
     }
 
-    multi method feed(@frames) returns Bool {
+    multi method feed(@frames --> Bool ) {
         if not $!started {
             X::NotStarted.new.throw;
         }
@@ -348,7 +348,7 @@ class Audio::Fingerprint::Chromaprint {
         $!context.feed($carray, $frames);
     }
 
-    method finish() returns Bool {
+    method finish( --> Bool ) {
         if not $!started {
             X::NotStarted.new.throw;
         }
