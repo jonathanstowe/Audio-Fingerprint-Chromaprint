@@ -1,8 +1,11 @@
 {
   "name": "Audio::Fingerprint::Chromaprint",
+  "version": "0.0.2",
+  "api": "1.0",
   "source-url": "git://github.com/jonathanstowe/Audio-Fingerprint-Chromaprint.git",
   "support": {
-    "source": "git://github.com/jonathanstowe/Audio-Fingerprint-Chromaprint.git"
+    "source": "git://github.com/jonathanstowe/Audio-Fingerprint-Chromaprint.git",
+    "bugtracker": "https://github.com/jonathanstowe/Audio-Fingerprint-Chromaprint/issues"
   },
   "perl": "6.*",
   "resources": [
@@ -26,10 +29,9 @@
   "provides": {
     "Audio::Fingerprint::Chromaprint": "lib/Audio/Fingerprint/Chromaprint.pm"
   },
-  "version": "0.0.1",
   "authors": [
     "Jonathan Stowe <jns+gh@gellyfish.co.uk>"
   ],
   "description": "Get audio fingerprint using the chromaprint / AcoustID library",
-  "meta6": "0"
+  "meta-version": "0"
 }

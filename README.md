@@ -50,7 +50,7 @@ your application.
 
 ## Installation
 
-You will need the chromaprint library installed for this to work,
+You will need the chromaprint library v1 installed for this to work,
 many operating system distributions will have a package that you
 can install with appropriate software.  If you do not have a package
 available you may be able to build it from the source which can be
@@ -76,5 +76,5 @@ This is free software.
 
 See the [LICENCE](LICENCE) file in the distribution.
 
-© Jonathan Stowe 2016, 2017
+© Jonathan Stowe 2016, 2017, 2019
 
