@@ -1,5 +1,5 @@
 
-use v6.c;
+use v6;
 use NativeCall;
 use NativeHelpers::Array;
 

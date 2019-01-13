@@ -4,12 +4,10 @@
   "support": {
     "source": "git://github.com/jonathanstowe/Audio-Fingerprint-Chromaprint.git"
   },
-  "perl": "6.c",
+  "perl": "6.*",
   "resources": [
-    
   ],
   "build-depends": [
-    
   ],
   "auth": "github:jonathanstowe",
   "depends": [
