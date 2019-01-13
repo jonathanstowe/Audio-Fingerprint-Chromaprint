@@ -8,4 +8,4 @@ perl6:
 install:
   - sudo apt-get install libchromaprint0
   - rakudobrew build-zef
-  - zef --/test --deps-only install .
+  - zef --deps-only install .
