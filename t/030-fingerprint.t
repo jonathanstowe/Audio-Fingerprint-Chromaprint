@@ -8,7 +8,7 @@ use Audio::Fingerprint::Chromaprint;
 
 use LibraryCheck;
 
-if library-exists('chromaprint', v0) {
+if library-exists('chromaprint', v1) {
     my $obj;
 
     lives-ok { $obj = Audio::Fingerprint::Chromaprint.new }, "create object";

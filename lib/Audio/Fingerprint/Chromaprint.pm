@@ -153,7 +153,7 @@ should be.
 
 class Audio::Fingerprint::Chromaprint {
 
-    constant LIB = [ 'chromaprint', v0 ];
+    constant LIB = [ 'chromaprint', v1 ];
 
     enum Algorithm ( Test1 => 0, Test2 => 1, Test3 => 2, Test4 => 3);
 
