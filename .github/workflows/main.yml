@@ -23,7 +23,7 @@ jobs:
       run:  apt-get update -qq
 
     - name: install native dependencies
-      run:  apt-get install -qq -y  libchromaprint0 libsndfile1-dev
+      run:  apt-get install -qq -y  libchromaprint1 libsndfile1-dev
 
     - name: Install dependencies
       run: zef install --deps-only --/test --test-depends .
