@@ -2,10 +2,11 @@
 
 Get audio fingerprint using the chromaprint / AcoustID library
 
-[![Build Status](https://travis-ci.org/jonathanstowe/Audio-Fingerprint-Chromaprint.svg?branch=master)](https://travis-ci.org/jonathanstowe/Audio-Fingerprint-Chromaprint)
+![Build Status](https://github.com/jonathanstowe/Audio-Fingerprint-Chromaprint/workflows/CI/badge.svg)
+
 ## Synopsis
 
-```perl6
+```raku
 
 use Audio::Fingerprint::Chromaprint;
 use Audio::Sndfile;
@@ -56,19 +57,18 @@ can install with appropriate software.  If you do not have a package
 available you may be able to build it from the source which can be
 found at https://acoustid.org/chromaprint.
 
-Assuming you have a working rakudo Perl 6 installation (and the
+Assuming you have a working Rakudo installation (and the
 chromaprint library,) then you should be able to install the module
-with ```zef``` :
+with `zef` :
 
 	zef install Audio::Fingerprint::Chromaprint
 
-Other installers may become available in the future.
 
 ## Support
 
 This is a fairly simple library, but if you find a problem with it
 or have a suggestion how it can be improved then please raise a
-ticket at https://github.com/jonathanstowe/Audio-Fingerprint-Chromaprint/issues.
+ticket at [github](https://github.com/jonathanstowe/Audio-Fingerprint-Chromaprint/issues).
 
 ## Copyright & Licence
 
@@ -76,5 +76,5 @@ This is free software.
 
 See the [LICENCE](LICENCE) file in the distribution.
 
-© Jonathan Stowe 2016, 2017, 2019
+© Jonathan Stowe 2016 - 2021
 
