@@ -1,7 +1,7 @@
 {
   "auth": "zef:jonathanstowe",
   "name": "Audio::Fingerprint::Chromaprint",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "source-url": "https://github.com/jonathanstowe/Audio-Fingerprint-Chromaprint.git",
   "build-depends": [
   ],
@@ -24,7 +24,7 @@
     "bugtracker": "https://github.com/jonathanstowe/Audio-Fingerprint-Chromaprint/issues"
   },
   "provides": {
-    "Audio::Fingerprint::Chromaprint": "lib/Audio/Fingerprint/Chromaprint.pm"
+    "Audio::Fingerprint::Chromaprint": "lib/Audio/Fingerprint/Chromaprint.rakumod"
   },
   "license": "Artistic-2.0",
   "raku": "6.*",

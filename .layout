@@ -47,7 +47,7 @@
               "children": [
                 {
                   "type": "file",
-                  "name": "Chromaprint.pm"
+                  "name": "Chromaprint.rakumod"
                 }
               ],
               "purpose": null,
