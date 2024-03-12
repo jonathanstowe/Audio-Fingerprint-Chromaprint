@@ -35,7 +35,27 @@ if library-exists('chromaprint', v1) {
     my $fp;
     ok $rc, "finish was okay";
     lives-ok { $fp = $obj.fingerprint }, "get fingerprint";
-    diag $fp;
+    my $rfp;
+    lives-ok {
+        $rfp = $obj.fingerprint(:raw) ;
+     }, "get raw-fingerprint" ;
+
+    my $encoded;
+
+    lives-ok {
+        $encoded = $obj.encode-fingerprint($rfp);
+    }, "encode-fingerprint";
+
+    is $encoded, $fp, "encoded raw fingerprint is the same as the original one";
+
+    my $decoded;
+
+    lives-ok {
+        $decoded = $obj.decode-fingerprint($encoded);
+    }, "decode-fingerprint";
+
+    cmp-ok $decoded, '~~', $rfp, 'decoded is the same as previous raw';
+
     $wav-obj.close;
 
     lives-ok { $wav-obj =  Audio::Sndfile.new(filename => $wav-path, :r) }, "open a wav file to re-read";

@@ -63,7 +63,7 @@ your application.
 
     method new(Int :$silence-threshold, Algorithm :$algorithm = Test2) returns Audio::Fingerprint::Chromaprint
 
-This is the contructor for the class. If the chromaprint library 
+This is the contructor for the class. If the chromaprint library
 was built with the faster C<fftw> library rather than ffmpeq
 then the initialisation of the library is not thread-safe, so
 it may be best to avoid having more than one instance at a time
@@ -100,12 +100,12 @@ reflection of the data that is going to be fed.
 =head2 method feed
 
     multi method feed(CArray $data, Int $frames) returns Bool
-    multi method feed(@frames) returns Bool 
+    multi method feed(@frames) returns Bool
 
 This adds the audio data that is to be analysed, the data
 should be interleaved 16 bit signed integers. You will need
 several seconds worth of data (which can be fed in pieces,)
-to be able to get a usable fingerprint, so, depending on 
+to be able to get a usable fingerprint, so, depending on
 the samplerate of the audio data, you may need to feed at
 minimum somewhere in the region of 100,000 frames.
 
@@ -142,12 +142,38 @@ engine will be reset.
 
 =head2 method fingerprint
 
-    method fingerprint() returns Str
+    multi method fingerprint()     returns Str
+    multi method fingerprint(:raw) returns buf32
 
 This returns the calculated fingerprint as a string, if there
 was unsufficient data provided then the fingerprint may only
-comprise 4 or 5 characters, rather than 23 or so that it 
+comprise 4 or 5 characters, rather than 23 or so that it
 should be.
+
+If the C<:raw> adverb is provided a Buf of 32 bit integers is
+returned instead, this may be useful for comparison using other
+tools.
+
+=head2 method encode-fingerprint
+
+    method encode-fingerprint(buf32 $fingerprint) returns Str
+
+Given a buffer of 32 bit integers as might be returned from
+C<fingerprint> with the C<:raw> switch it will return the
+encoded string (i.e. the default return of C<fingerprint>.
+
+Although this claims to be base64 encoded it appears to
+use a different alphabet so may not be compatible with
+different implementations.
+
+=head2 method decode-fingerprint
+
+    method decode-fingerprint(Str $fingerprint) returns buf32
+
+Given a string fingerprint that might be returned by C<fingerprint>
+or C<encode-fingerprint> this will return the "raw" fingerprint as
+a buffer of 32 bit integers.
+
 
 =end pod
 
@@ -163,6 +189,8 @@ class Audio::Fingerprint::Chromaprint {
     method version( --> Str ) {
         chromaprint_get_version();
     }
+
+    sub chromaprint_dealloc(Pointer $ptr ) is native(LIB) { * }
 
     class Context is repr('CPointer') {
 
@@ -207,29 +235,40 @@ class Audio::Fingerprint::Chromaprint {
             Bool($rc);
         }
 
+
+        proto method fingerprint(|c) { * }
+
         sub chromaprint_get_fingerprint(Context $ctx, Pointer[Str]  $fingerprint is rw --> int32 ) is native(LIB) { * }
 
-        method fingerprint(Context:D: --> Str ) {
+        multi method fingerprint(Context:D: --> Str ) {
             my $p = Pointer[Str].new;
             my $rc = chromaprint_get_fingerprint(self, $p);
             my $ret = $p.deref.encode.decode;
-            self!dealloc($p);
+            chromaprint_dealloc($p);
             $ret;
         }
 
-        sub chromaprint_dealloc_p(Pointer $ptr ) is symbol('chromaprint_dealloc') is native(LIB) { * }
+        sub chromaprint_get_raw_fingerprint(Context $ctx, Pointer[CArray[uint32]] $fingerprint is rw, uint32 $size is rw --> int32 ) is native(LIB) { * }
 
-        method !dealloc(Pointer $ptr) {
-            chromaprint_dealloc_p($ptr);
+        multi method fingerprint( :$raw! --> buf32) {
+            my $fp = Pointer[CArray[uint32]].new;
+            my uint32 $size = 0;
+            my $rc = chromaprint_get_raw_fingerprint(self, $fp, $size);
+            my $ret = buf32.new($fp.deref[0 .. $size - 1]);
+            chromaprint_dealloc($fp);
+            $ret;
         }
+
     }
 
     has Context $!context handles <fingerprint free>;
 
     has Bool $!started = False;
 
-    submethod BUILD(Int :$silence-threshold, Algorithm :$algorithm = Test2) {
-        $!context = Context.new(:$algorithm);
+    has Algorithm $.algorithm;
+
+    submethod BUILD(Int :$silence-threshold, Algorithm :$!algorithm = Test2) {
+        $!context = Context.new(:$!algorithm);
 
         if $silence-threshold.defined {
             $!context.silence-threshold($silence-threshold);
@@ -263,6 +302,30 @@ class Audio::Fingerprint::Chromaprint {
         my $carray = copy-to-carray(@frames, int16);
         my $frames = (@frames.elems / $!channels).Int;
         $!context.feed($carray, $frames);
+    }
+
+    sub chromaprint_encode_fingerprint(CArray[uint32] $fp, int32  $size, int32 $algorithm, Pointer[Str] $encoded is rw, int32 $encoded-size is rw, int32 $base64 --> int32 ) is native(LIB) { * }
+
+    method encode-fingerprint(buf32 $fp, Algorithm :$algorithm --> Str ) {
+        my CArray[uint32] $raw = CArray[uint32].new($fp.list);
+        my Pointer[Str] $encoded = Pointer[Str].new;
+        my int32 $encoded-size = 0;
+        my $rc = chromaprint_encode_fingerprint($raw, $fp.elems, ($algorithm // $!algorithm).Int, $encoded, $encoded-size, True.Int);
+        my $ret = $encoded.deref.encode.decode;
+        chromaprint_dealloc($encoded);
+        $ret;
+    }
+
+    sub chromaprint_decode_fingerprint(Str $encoded, int32 $encoded-size, Pointer[CArray[uint32]] $fingerprint is rw, uint32 $size is rw, int32 $algorithm is rw, int32 $base64 --> int32) is native(LIB) { * }
+
+    method decode-fingerprint(Str $encoded --> buf32) {
+            my $fp = Pointer[CArray[uint32]].new;
+            my uint32 $size = 0;
+            my int32 $algorithm = 0;
+            my $rc = chromaprint_decode_fingerprint($encoded, $encoded.encode.elems, $fp, $size, $algorithm, True.Int);
+            my $ret = buf32.new($fp.deref[0 .. $size - 1]);
+            chromaprint_dealloc($fp);
+            $ret;
     }
 
     method finish( --> Bool ) {

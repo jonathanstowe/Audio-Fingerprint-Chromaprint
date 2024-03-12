@@ -1,3 +1,6 @@
+v0.0.5	Tue 12 Mar 15:55:07 GMT 2024
+	* Add encode-fingerprint, decode-fingerprint
+	* Enable access to the raw fingerprint	
 v0.0.4	Sun  7 Aug 09:44:29 BST 2022
 	* Upload to zef repository
 v0.0.3		Fri  2 Apr 13:17:37 BST 2021
